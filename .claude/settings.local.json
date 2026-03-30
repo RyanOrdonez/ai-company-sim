@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth:*)",
+      "Bash(pnpm --version)",
+      "Bash(npm install:*)",
+      "Bash(pnpm install:*)",
+      "Bash(node -e \":*)",
+      "Bash(timeout 15 pnpm --filter @ai-company-sim/server dev)",
+      "Bash(pnpm --filter @ai-company-sim/client typecheck)",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}

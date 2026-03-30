@@ -1,5 +1,12 @@
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import { getSupabaseAdmin } from './db/supabase.js';
 
 const server = Fastify({ logger: true });
 
@@ -8,7 +15,13 @@ await server.register(cors, {
 });
 
 server.get('/api/health', async () => {
-  return { status: 'ok', timestamp: new Date().toISOString() };
+  // Quick Supabase connectivity check
+  const { error } = await getSupabaseAdmin().from('users').select('id').limit(1);
+  return {
+    status: error ? 'degraded' : 'ok',
+    supabase: error ? error.message : 'connected',
+    timestamp: new Date().toISOString(),
+  };
 });
 
 const port = Number(process.env['PORT'] ?? 3001);
