@@ -1,0 +1,21 @@
+{
+  "name": "ai-company-sim",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A gamified AI company simulator",
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "dev:client": "pnpm --filter @ai-company-sim/client dev",
+    "dev:server": "pnpm --filter @ai-company-sim/server dev",
+    "build": "pnpm -r run build",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}
