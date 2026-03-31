@@ -24,20 +24,20 @@
 - [x] **T-012** Lighting pass — warm office lighting, directional shadows
 
 ### 3. CEO Avatar
-- [ ] **T-013** Avatar creation UI — name input, appearance options, CEO archetype selection
-- [ ] **T-014** Modular character assembly system (base mesh + hair + clothing components)
-- [ ] **T-015** Place CEO avatar in CEO Suite with idle animation
+- [x] **T-013** Avatar creation UI — name input, appearance options, CEO archetype selection
+- [x] **T-014** Modular character assembly system (base mesh + hair + clothing components)
+- [x] **T-015** Place CEO avatar in CEO Suite with idle animation
 
 ### 4. Chief of Staff (CoS)
-- [ ] **T-016** CoS character model and placement at their desk in CEO Suite
-- [ ] **T-017** CoS conversation system — text overlay UI on 3D canvas
-- [ ] **T-018** CoS personality definition and intro dialogue script
+- [x] **T-016** CoS character model and placement at their desk in CEO Suite
+- [x] **T-017** CoS conversation system — text overlay UI on 3D canvas
+- [x] **T-018** CoS personality definition and intro dialogue script
 
 ### 5. Company DNA (Onboarding)
-- [ ] **T-019** 3-question conversational flow via CoS (industry, vision, culture)
-- [ ] **T-020** Claude API integration — generate mission statement, OKRs, culture from answers
-- [ ] **T-021** Review/edit screen for generated Company DNA before confirming
-- [ ] **T-022** Save company DNA to Supabase and display in CEO Suite
+- [x] **T-019** 3-question conversational flow via CoS (industry, vision, culture)
+- [x] **T-020** Claude API integration — generate mission statement, OKRs, culture from answers
+- [x] **T-021** Review/edit screen for generated Company DNA before confirming
+- [x] **T-022** Save company DNA to Supabase and display in CEO Suite
 
 ---
 
