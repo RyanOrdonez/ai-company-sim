@@ -3,8 +3,11 @@ import { Engine } from '@babylonjs/core';
 import { createCEOSuite } from './scenes/ceo-suite';
 import { AvatarCreator } from './components/avatar-creator';
 import { CoSChat } from './components/cos-chat';
+import { CompanyDnaReview } from './components/company-dna-review';
 import type { ChatMessage } from './components/cos-chat';
 import type { AvatarConfig } from './types/avatar';
+import type { CompanyDna } from './api/cos';
+import { sendCoSMessage } from './api/cos';
 import { COS_NAME, COS_INTRO, COS_QUESTIONS } from './types/cos';
 
 type Phase = 'avatar' | 'office';
@@ -15,23 +18,53 @@ export function App() {
   const [avatarConfig, setAvatarConfig] = useState<AvatarConfig | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [typing, setTyping] = useState(false);
+  const [companyDna, setCompanyDna] = useState<CompanyDna | null>(null);
+  const [showDnaReview, setShowDnaReview] = useState(false);
+  const [dnaConfirmed, setDnaConfirmed] = useState(false);
   const questionIndex = useRef(0);
+  const useAi = useRef(true);
+  const messagesRef = useRef<ChatMessage[]>([]);
+
+  // Keep ref in sync
+  messagesRef.current = messages;
 
   const handleAvatarConfirm = useCallback((config: AvatarConfig) => {
     setAvatarConfig(config);
     setPhase('office');
-    // Start the CoS intro with a slight delay so the scene renders first
     setTimeout(() => {
       setMessages(COS_INTRO);
     }, 800);
   }, []);
 
-  const handleSend = useCallback((text: string) => {
-    // Add CEO message
-    setMessages((prev) => [...prev, { role: 'ceo', text }]);
-
-    // Simulate CoS response
+  const handleSend = useCallback(async (text: string) => {
+    // Use ref for current messages to avoid stale closure
+    const current = messagesRef.current;
+    const newMessages: ChatMessage[] = [...current, { role: 'ceo' as const, text }];
+    setMessages(newMessages);
     setTyping(true);
+
+    // Try Claude API first
+    if (useAi.current) {
+      try {
+        const response = await sendCoSMessage(
+          newMessages.map((m) => ({ role: m.role, text: m.text })),
+        );
+
+        setTyping(false);
+        setMessages((prev) => [...prev, { role: 'cos', text: response.text }]);
+
+        if (response.companyDna) {
+          setCompanyDna(response.companyDna);
+          setTimeout(() => setShowDnaReview(true), 1500);
+        }
+        return;
+      } catch {
+        useAi.current = false;
+        console.warn('AI endpoint unavailable, using scripted CoS responses');
+      }
+    }
+
+    // Scripted fallback
     const qi = questionIndex.current;
     setTimeout(() => {
       setTyping(false);
@@ -39,26 +72,61 @@ export function App() {
         setMessages((prev) => [...prev, { role: 'cos', text: COS_QUESTIONS[qi]! }]);
         questionIndex.current = qi + 1;
       } else {
-        // Final synthesis — placeholder until we wire up Claude API
+        // Gather all CEO answers from the full conversation
+        const allCeoAnswers = newMessages
+          .filter((m) => m.role === 'ceo')
+          .map((m) => m.text);
+
+        const fallbackDna: CompanyDna = {
+          mission: `We solve real problems for real people. ${allCeoAnswers[0] ?? ''}`.slice(0, 200),
+          okrs: [
+            {
+              objective: 'Establish product-market fit',
+              keyResults: ['Launch MVP', '100 beta users', '4.0+ satisfaction score'],
+            },
+            {
+              objective: 'Build a world-class team',
+              keyResults: ['Hire 5 key roles', 'Establish culture playbook', '90% retention'],
+            },
+            {
+              objective: 'Achieve sustainable growth',
+              keyResults: ['$100K ARR', '20% MoM growth', '3 enterprise clients'],
+            },
+          ],
+          targetMarket: allCeoAnswers[0] ?? 'Early-stage companies and ambitious teams.',
+          culture: (allCeoAnswers[1] ?? 'innovative fast collaborative bold').split(' ').slice(0, 4),
+        };
+
+        setCompanyDna(fallbackDna);
+
         setMessages((prev) => [
           ...prev,
           {
             role: 'cos',
-            text: `Love it. I've got everything I need. Let me put together your company DNA — mission statement, OKRs, culture profile, and target market. Give me a moment...`,
+            text: `I've put together your company DNA based on your vision. Take a look and edit anything before we finalize.`,
           },
         ]);
-        // After another delay, show the "synthesized" result
-        setTimeout(() => {
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: 'cos',
-              text: `Here's what I've drafted based on your vision. Once we connect to the AI backend, I'll generate this for real using Claude. For now — welcome to your company! Let's build something great.`,
-            },
-          ]);
-        }, 2000);
+
+        setTimeout(() => setShowDnaReview(true), 1500);
       }
     }, 1200);
+  }, []); // no deps — uses refs instead
+
+  const handleDnaConfirm = useCallback((dna: CompanyDna) => {
+    setCompanyDna(dna);
+    setShowDnaReview(false);
+    setDnaConfirmed(true);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'cos',
+        text: `Company DNA is locked in. Your mission, culture, and OKRs are set. Welcome to your company — let's build something great. When you're ready, we'll start hiring your first team members.`,
+      },
+    ]);
+  }, []);
+
+  const handleDnaBack = useCallback(() => {
+    setShowDnaReview(false);
   }, []);
 
   useEffect(() => {
@@ -98,15 +166,28 @@ export function App() {
             <p style={{ fontSize: 13, opacity: 0.7 }}>
               CEO Suite — {avatarConfig?.name ?? 'CEO'}
             </p>
+            {dnaConfirmed && companyDna && (
+              <p style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>
+                {companyDna.mission.slice(0, 60)}...
+              </p>
+            )}
           </div>
 
-          {messages.length > 0 && (
+          {messages.length > 0 && !showDnaReview && (
             <CoSChat
               messages={messages}
               onSend={handleSend}
               cosName={COS_NAME}
               ceoName={avatarConfig?.name ?? 'CEO'}
               typing={typing}
+            />
+          )}
+
+          {showDnaReview && companyDna && (
+            <CompanyDnaReview
+              dna={companyDna}
+              onConfirm={handleDnaConfirm}
+              onBack={handleDnaBack}
             />
           )}
         </>
