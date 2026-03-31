@@ -15,6 +15,8 @@ import {
   Space,
   Axis,
 } from '@babylonjs/core';
+import { buildCharacter } from './character-builder';
+import type { AvatarConfig } from '../types/avatar';
 
 // ── Color palette ────────────────────────────────────────────────────
 const C = {
@@ -693,6 +695,93 @@ function createRug(scene: Scene): void {
 }
 
 // ── Credenza (low cabinet behind desk, against back wall) ────────────
+// ── Chief of Staff Desk (left side, angled) ─────────────────────────
+function createCoSDesk(scene: Scene, shadows: ShadowGenerator): void {
+  const x = -3.8, z = -2.0;
+  const angle = Math.PI / 3; // angled toward room center
+  const meshes: Mesh[] = [];
+
+  // Desktop
+  const top = box('cosDeskTop', { width: 2.0, height: 0.08, depth: 1.0 }, scene);
+  top.material = mat('cosDeskTopMat', C.deskTop, scene);
+  top.position.set(x, 0.74, z);
+  top.rotation.y = angle;
+  meshes.push(top);
+
+  // Front panel
+  const front = box('cosDeskFront', { width: 2.0, height: 0.65, depth: 0.08 }, scene);
+  front.material = mat('cosDeskFrontMat', C.deskBody, scene);
+  front.position.set(
+    x + Math.sin(angle) * -0.46,
+    0.36,
+    z + Math.cos(angle) * -0.46,
+  );
+  front.rotation.y = angle;
+  meshes.push(front);
+
+  // Side panels
+  for (const s of [-1, 1]) {
+    const sp = box(`cosDeskSide${s}`, { width: 0.08, height: 0.65, depth: 1.0 }, scene);
+    sp.material = mat(`cosDeskSideMat${s}`, C.deskBody, scene);
+    sp.position.set(
+      x + Math.cos(angle) * s * 0.96,
+      0.36,
+      z - Math.sin(angle) * s * 0.96,
+    );
+    sp.rotation.y = angle;
+    meshes.push(sp);
+  }
+
+  // Laptop on desk
+  const laptopBase = box('cosLaptop', { width: 0.4, height: 0.015, depth: 0.28 }, scene);
+  laptopBase.material = mat('cosLaptopMat', C.metal, scene);
+  laptopBase.position.set(x, 0.79, z);
+  laptopBase.rotation.y = angle;
+  meshes.push(laptopBase);
+
+  const laptopScreen = box('cosLaptopScr', { width: 0.38, height: 0.26, depth: 0.01 }, scene);
+  laptopScreen.material = mat('cosLaptopScrMat', C.monScreen, scene);
+  laptopScreen.position.set(
+    x + Math.sin(angle) * 0.12,
+    0.92,
+    z + Math.cos(angle) * 0.12,
+  );
+  laptopScreen.rotation.y = angle;
+  laptopScreen.rotation.x = -0.2; // tilted back
+  meshes.push(laptopScreen);
+
+  // Coffee mug
+  const mug = MeshBuilder.CreateCylinder('cosMug', { height: 0.1, diameter: 0.06, tessellation: 8 }, scene);
+  mug.material = mat('cosMugMat', new Color3(0.9, 0.88, 0.85), scene);
+  mug.position.set(
+    x + Math.cos(angle) * 0.6,
+    0.83,
+    z - Math.sin(angle) * 0.6,
+  );
+  meshes.push(mug);
+
+  // CoS chair (simpler office chair)
+  createGuestChair(scene,
+    x - Math.sin(angle) * 0.7,
+    z - Math.cos(angle) * 0.7,
+    angle + Math.PI, // facing the desk
+    'cos',
+  );
+
+  // Notepad
+  const notepad = box('cosNotepad', { width: 0.15, height: 0.01, depth: 0.2 }, scene);
+  notepad.material = mat('cosNotepadMat', new Color3(0.95, 0.93, 0.6), scene);
+  notepad.position.set(
+    x - Math.cos(angle) * 0.5,
+    0.79,
+    z + Math.sin(angle) * 0.5,
+  );
+  notepad.rotation.y = angle + 0.1;
+  meshes.push(notepad);
+
+  meshes.forEach((m) => shadows.addShadowCaster(m));
+}
+
 function createCredenza(scene: Scene): void {
   const cx = 0, cz = 4.2;
   const body = box('credenza', { width: 3.0, height: 0.75, depth: 0.5 }, scene);
@@ -765,7 +854,7 @@ function createCamera(scene: Scene, canvas: HTMLCanvasElement): ArcRotateCamera 
 }
 
 // ── Main export ──────────────────────────────────────────────────────
-export function createCEOSuite(engine: Engine, canvas: HTMLCanvasElement): Scene {
+export function createCEOSuite(engine: Engine, canvas: HTMLCanvasElement, avatarConfig?: AvatarConfig): Scene {
   const scene = new Scene(engine);
   scene.clearColor = new Color4(0.05, 0.05, 0.1, 1);
 
@@ -800,6 +889,34 @@ export function createCEOSuite(engine: Engine, canvas: HTMLCanvasElement): Scene
 
   // Small plant on credenza
   createPlant(scene, 1.2, 4.2, 'plantC', false);
+
+  // ── Chief of Staff desk area (left side, angled toward center) ──────
+  createCoSDesk(scene, shadows);
+
+  // CoS character — fixed persona
+  const cosConfig: AvatarConfig = {
+    name: 'Alex Chen',
+    archetype: 'operator',
+    skinTone: '#C68642',
+    hairStyle: 'slicked',
+    hairColor: '#1A1A1A',
+    outfitColor: '#333333',
+    accessory: 'glasses',
+  };
+  const cos = buildCharacter(scene, cosConfig, 'cos', true);
+  cos.position.set(-3.8, 0.05, -1.8); // at CoS desk
+  cos.rotation.y = Math.PI / 3; // angled toward center of room
+  cos.scaling.setAll(0.85);
+  shadows.addShadowCaster(cos, true);
+
+  // Place CEO avatar in chair if config provided
+  if (avatarConfig) {
+    const ceo = buildCharacter(scene, avatarConfig, 'ceo', true);
+    ceo.position.set(0, 0.05, 2.9); // seated in exec chair
+    ceo.rotation.y = 0; // facing forward (toward guest chairs)
+    ceo.scaling.setAll(0.9);
+    shadows.addShadowCaster(ceo, true);
+  }
 
   return scene;
 }
